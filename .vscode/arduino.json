@@ -1,0 +1,6 @@
+{
+    "sketch": "phone-locker.ino",
+    "output": "build",
+    "board": "arduino:avr:mega",
+    "intelliSenseGen": "enable"
+}

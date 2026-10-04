@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "*.ino": "cpp"
+  },
+  "arduino.useArduinoCli": true,
+  "arduino.path": "/usr/bin",
+  "arduino.commandPath": "arduino-cli"
+}
