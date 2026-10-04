@@ -5,9 +5,7 @@
 #include <Arduino.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
 HX711 scale;
-
 Servo lockServo;
 
 // pins
@@ -23,8 +21,8 @@ const int pwmServo = 4;
 
 const int buzzerPin = 5;
 
+float WEIGHT, DISTANCE;
 
-int oldButtonVal= LOW;
 
 void setup() {
   Serial.begin(115200);
@@ -33,18 +31,14 @@ void setup() {
   pinMode(sonicEcho, INPUT);
   pinMode(sonicTrig, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  
   scale.begin(scaleData, scaleClock);
-
   scale.set_scale(420.0);
-
-  Serial.println("HX711 initialized and zeroed.");
 
   lockServo.attach(pwmServo);
   lockServo.write(0);
-  Serial.println("LmaoXD");
 
-  // LCD init goes here
   lcd.init();
   lcd.backlight();
 
@@ -56,67 +50,76 @@ void setup() {
   lcd.clear();
 }
 
-float getDistance(){
+void getDistance(){
     digitalWrite(sonicTrig, LOW);
     delayMicroseconds(2);
     digitalWrite(sonicTrig, HIGH);
     delayMicroseconds(10);
     digitalWrite(sonicTrig, LOW);
 
-    // 2. Membaca Durasi Pantulan (µs)
-    long durasi = pulseIn(sonicEcho, HIGH);
-
     // 3. Menghitung Jarak (cm)
-    float jarak = (durasi * 0.0343) / 2;
-    return jarak; 
+    DISTANCE = (pulseIn(sonicEcho, HIGH) * 0.0343) / 2;
 }
 
-float getWeight(){
-  float weight;
-  if (scale.wait_ready_timeout(100)) {
-    weight = scale.get_units(5);
-    Serial.println(weight, 2);
-  } else {
-    Serial.println("HX711 not ready. Check connections.");
-  }
-  return weight;
+void getWeight(){
+    if (scale.is_ready()){
+      WEIGHT = scale.get_units(5);
+      // Serial.println(WEIGHT, 2);
+    } 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
   int newButtonVal = digitalRead(buttonPin);
 
   // tare phone weight
-  if (newButtonVal != oldButtonVal){
+  if (newButtonVal == HIGH){
     // run when button pressed
+    Serial.println("Button Clicked");
+  
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Zero-ing scale");
     scale.tare(); 
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Zero-ed scale");
+    Serial.println("Weight Tared");
+    lcd.clear();
+    return;
   }
 
-  // LCD DISPLAYS WEIGHT AND DISTANCE
-  
-  
   // cek person using getDistance -- if distance < 30cm servo unlocks -> starts reading weight
-  float distance = getDistance();
+  getDistance();
   lcd.setCursor(0,0);
-  lcd.print(distance);
+  lcd.print(DISTANCE);
   
-  float weight = getWeight();
+  getWeight();
   lcd.setCursor(0,1);
-  lcd.print(weight);
-  if (distance < 30){ // person detected
+  lcd.print(WEIGHT,2);
+  bool startedTimer = false;
+  if (DISTANCE < 30){ // person detected
     lockServo.write(90);
-    if (weight < 0){ // phone is not picked up
+    if (WEIGHT < 0){ // phone is not picked up
       // if weight is negative for more than 120s activate buzzer
-      long startTime = millis();
-      if (startTime > 120000) { tone(buzzerPin, 1500);}
+      long startTime = millis(); startedTimer=true;
+      noTone(buzzerPin);
+      if (startTime > 120000){ tone(buzzerPin, 1500); }
     }
-  } else if (distance > 30){ // no person detected
+    // phone has been picked up and put back
+    else if (startedTimer && WEIGHT == 0){ noTone(buzzerPin); lockServo.write(0); }
+    else return;
+
+  } 
+  else if (DISTANCE > 30){ // no person detected
     lockServo.write(0);
     // if weight is negative and distance > 30cm activate buzzer
-    if (weight < 0){ // phone is picked up
+    if (WEIGHT < 0){ // phone is picked up
       tone(buzzerPin, 1500);
-    } else return;
+    } 
+    // phone is put down
+    else if (WEIGHT == 0){ noTone(buzzerPin); lockServo.write(0); }
+    else return;
   }
   
   // delay(100);
