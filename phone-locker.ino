@@ -23,7 +23,6 @@ const int pwmServo = 4;
 
 const int buzzerPin = 5;
 
-bool initialized;
 
 int oldButtonVal= LOW;
 
@@ -39,7 +38,6 @@ void setup() {
 
   scale.set_scale(420.0);
 
-  initialized = true;
   Serial.println("HX711 initialized and zeroed.");
 
   lockServo.attach(pwmServo);
@@ -75,22 +73,17 @@ float getWeight(){
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (!initialized) {
-    delay(1000);
-    return;
-  }
 
   int newButtonVal = digitalRead(buttonPin);
 
+  // tare phone weight
   if (newButtonVal != oldButtonVal)
   {
     // run when button pressed
     scale.tare(); 
   }
   
-
   
-  // tare phone weight
   // cek person using getDistance -- if distance < 30cm servo unlocks -> starts reading weight
   float distance = getDistance();
   float weight = getWeight();
