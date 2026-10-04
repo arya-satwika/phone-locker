@@ -43,6 +43,17 @@ void setup() {
   lockServo.attach(pwmServo);
   lockServo.write(0);
   Serial.println("LmaoXD");
+
+  // LCD init goes here
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Arya Satwika");
+  lcd.setCursor(0, 1);
+  lcd.print("24051204069");
+  delay(1000);
+  lcd.clear();
 }
 
 float getDistance(){
@@ -62,7 +73,7 @@ float getDistance(){
 
 float getWeight(){
   float weight;
-  if (scale.wait_ready_timeout(1000)) {
+  if (scale.wait_ready_timeout(100)) {
     weight = scale.get_units(5);
     Serial.println(weight, 2);
   } else {
@@ -77,16 +88,22 @@ void loop() {
   int newButtonVal = digitalRead(buttonPin);
 
   // tare phone weight
-  if (newButtonVal != oldButtonVal)
-  {
+  if (newButtonVal != oldButtonVal){
     // run when button pressed
     scale.tare(); 
   }
+
+  // LCD DISPLAYS WEIGHT AND DISTANCE
   
   
   // cek person using getDistance -- if distance < 30cm servo unlocks -> starts reading weight
   float distance = getDistance();
+  lcd.setCursor(0,0);
+  lcd.print(distance);
+  
   float weight = getWeight();
+  lcd.setCursor(0,1);
+  lcd.print(weight);
   if (distance < 30){ // person detected
     lockServo.write(90);
     if (weight < 0){ // phone is not picked up
