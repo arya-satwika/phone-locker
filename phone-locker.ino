@@ -23,6 +23,9 @@ const int buzzerPin = 5;
 
 float WEIGHT, DISTANCE;
 
+long startLiftTime = 0;
+bool startedLifting = false;
+
 
 void setup() {
   Serial.begin(115200);
@@ -70,10 +73,10 @@ void getWeight(){
 
 void loop() {
 
-  int newButtonVal = digitalRead(buttonPin);
+  int buttonState = digitalRead(buttonPin);
 
   // tare phone weight
-  if (newButtonVal == HIGH){
+  if (buttonState == HIGH){
     // run when button pressed
     Serial.println("Button Clicked");
   
@@ -91,36 +94,54 @@ void loop() {
 
   // cek person using getDistance -- if distance < 30cm servo unlocks -> starts reading weight
   getDistance();
-  lcd.setCursor(0,0);
-  lcd.print(DISTANCE);
+  // lcd.setCursor(0,0);
+  // lcd.print(DISTANCE);
   
   getWeight();
-  lcd.setCursor(0,1);
-  lcd.print(WEIGHT,2);
-  bool startedTimer = false;
-  if (DISTANCE < 30){ // person detected
-    lockServo.write(90);
-    if (WEIGHT < 0){ // phone is not picked up
-      // if weight is negative for more than 120s activate buzzer
-      long startTime = millis(); startedTimer=true;
-      noTone(buzzerPin);
-      if (startTime > 120000){ tone(buzzerPin, 1500); }
-    }
-    // phone has been picked up and put back
-    else if (startedTimer && WEIGHT == 0){ noTone(buzzerPin); lockServo.write(0); }
-    else return;
+  // lcd.setCursor(0,1);
+  // lcd.print(WEIGHT,2);
 
-  } 
-  else if (DISTANCE > 30){ // no person detected
-    lockServo.write(0);
-    // if weight is negative and distance > 30cm activate buzzer
-    if (WEIGHT < 0){ // phone is picked up
-      tone(buzzerPin, 1500);
-    } 
-    // phone is put down
-    else if (WEIGHT == 0){ noTone(buzzerPin); lockServo.write(0); }
-    else return;
+  // bool phoneDetected = fabsf(WEIGHT) <= weightTolerance;
+
+  float weightTolerance = 0.3; // weight can fluctuate depending on placement
+  bool phoneDetected =  fabsf(WEIGHT) <= weightTolerance; //absolute weight less than tolerance
+  bool tooHeavy = WEIGHT > weightTolerance;
+  bool phoneLifted = WEIGHT < -weightTolerance;
+  bool personDetected = DISTANCE <= 30;
+  if (phoneDetected && !tooHeavy) startedLifting = false;  //phone put down
+  bool liftTimeout = startedLifting && millis() - startLiftTime >= 120000;
+
+
+  bool soundAlarm = 
+        tooHeavy ||
+        (phoneLifted && !personDetected) ||
+        liftTimeout;
+
+  Serial.println(millis());
+  Serial.print("start lift time: ");
+  Serial.println(startLiftTime);
+  lcd.setCursor(0,1);
+  lcd.print(phoneDetected ? "Phone Detected  " : (tooHeavy ? "Too Heavy       " : "Phone Lifted    "));
+
+  lcd.setCursor(0,0);
+  lcd.print(personDetected ? "Unlocked" : "Locked  ");
+
+
+  if(soundAlarm){
+    tone(buzzerPin,1500);
+
+  } else{ 
+    noTone(buzzerPin); 
   }
   
-  // delay(100);
+  if (personDetected){ 
+    lockServo.write(90); 
+    if (phoneLifted){
+      if (!startedLifting) { startLiftTime = millis(); startedLifting = true; }
+    }
+    
+  } 
+  else { 
+    lockServo.write(0);
+  }
 }
