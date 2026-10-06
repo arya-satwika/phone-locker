@@ -29,8 +29,6 @@ bool startedLifting = false;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Setup reached");
-  // put your setup code here, to run once:
   pinMode(sonicEcho, INPUT);
   pinMode(sonicTrig, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
@@ -94,14 +92,9 @@ void loop() {
 
   // cek person using getDistance -- if distance < 30cm servo unlocks -> starts reading weight
   getDistance();
-  // lcd.setCursor(0,0);
-  // lcd.print(DISTANCE);
   
   getWeight();
-  // lcd.setCursor(0,1);
-  // lcd.print(WEIGHT,2);
 
-  // bool phoneDetected = fabsf(WEIGHT) <= weightTolerance;
 
   float weightTolerance = 0.3; // weight can fluctuate depending on placement
   bool phoneDetected =  fabsf(WEIGHT) <= weightTolerance; //absolute weight less than tolerance
@@ -112,7 +105,7 @@ void loop() {
   bool liftTimeout = startedLifting && millis() - startLiftTime >= 120000;
 
 
-  bool soundAlarm = 
+  bool triggerAlarm = 
         tooHeavy ||
         (phoneLifted && !personDetected) ||
         liftTimeout;
@@ -121,13 +114,17 @@ void loop() {
   Serial.print("start lift time: ");
   Serial.println(startLiftTime);
   lcd.setCursor(0,1);
-  lcd.print(phoneDetected ? "Phone Detected  " : (tooHeavy ? "Too Heavy       " : "Phone Lifted    "));
+  lcd.print(
+    phoneDetected ? "Phone Detected  " 
+    : (tooHeavy ? "Too Heavy       " 
+      : (liftTimeout ? "Lifted too long " 
+        : "Phone Lifted    ")));
 
   lcd.setCursor(0,0);
   lcd.print(personDetected ? "Unlocked" : "Locked  ");
 
 
-  if(soundAlarm){
+  if(triggerAlarm){
     tone(buzzerPin,1500);
 
   } else{ 
